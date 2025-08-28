@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Game Prototype | Neon</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- Starfield background -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Game HUD / Title -->
+  <section class="hero" style="min-height:auto; padding-top:4rem; padding-bottom:1rem;">
+    <div class="overlay"></div>
+    <div class="content" style="max-width:1000px;">
+      <h1 class="neon">🎮 3D Game Prototype</h1>
+      <p class="subtitle">Built with Three.js — custom physics & neon effects</p>
+      <div class="scroll-down"></div>
+
+  </section>
+
+  <!-- Game Canvas -->
+  <div style="position:relative; max-width:1100px; margin:0 auto 3rem; padding:0 1rem;">
+    <canvas id="gameCanvas" style="width:100%; height:60vh; border-radius:16px; display:block;"></canvas>
+
+    <!-- HUD overlay -->
+    <div id="hud" class="neon-panel" style="
+      position:absolute; top:10px; left:10px; right:auto; padding:.6rem .8rem; font-size:.9rem;">
+      <div style="display:flex; gap:1rem; align-items:center;">
+        <span>W/A/S/D: move</span>
+        <span>Space: jump</span>
+        <span>Shift: boost</span>
+        <span id="fps">FPS: --</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========= STARFIELD BACKGROUND (same vibe as your other pages) ========= */
+    (function starfield(){
+      const canvas = document.getElementById('bgCanvas');
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      function createStar() {
+        const geo = new THREE.SphereGeometry(0.07, 12, 12);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x00ffe0 });
+        const star = new THREE.Mesh(geo, mat);
+        star.position.set((Math.random()-0.5)*120, (Math.random()-0.5)*120, -Math.random()*220);
+        scene.add(star);
+      }
+      Array(400).fill().forEach(createStar);
+      camera.position.z = 5;
+
+      (function animate(){
+        requestAnimationFrame(animate);
+        scene.rotation.x += 0.0005;
+        scene.rotation.y += 0.001;
+        renderer.render(scene, camera);
+      })();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    })();
+
+    /* ===================== 3D GAME SCENE ===================== */
+    const canvas = document.getElementById('gameCanvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+    const gameScene = new THREE.Scene();
+    gameScene.fog = new THREE.Fog(0x0f0f1c, 40, 140);
+
+    const camera = new THREE.PerspectiveCamera(70, canvas.clientWidth / canvas.clientHeight, 0.1, 500);
+    camera.position.set(0, 6, 14);
+
+    // Resize handling
+    function resizeRenderer() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resizeRenderer();
+    window.addEventListener('resize', resizeRenderer);
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0x88e0ff, 0x081018, 0.8);
+    const key = new THREE.PointLight(0x00ffe0, 1.2, 60, 2.0);
+    key.position.set(6, 10, 6);
+    const magenta = new THREE.PointLight(0xff4dff, 0.8, 50, 2.0);
+    magenta.position.set(-8, 6, -4);
+    gameScene.add(hemi, key, magenta);
+
+    // Ground
+    const groundGeo = new THREE.PlaneGeometry(200, 200);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x0c1420,
+      metalness: 0.1,
+      roughness: 0.8,
+      emissive: 0x001a16,
+      emissiveIntensity: 0.6
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI/2;
+    ground.receiveShadow = true;
+    gameScene.add(ground);
+
+    // Neon boundary walls (simple invisible bounds + visible neon edges)
+    const BOUNDS = { x: 20, z: 20, yFloor: 0, yCeil: 20 };
+    // Visible edges
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffe0, linewidth: 2 });
+    function boxEdges(w, h, d){
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const edges = new THREE.EdgesGeometry(geo);
+      return new THREE.LineSegments(edges, edgeMat);
+    }
+    const cage = boxEdges(BOUNDS.x*2, 12, BOUNDS.z*2);
+    cage.position.y = 6;
+    gameScene.add(cage);
+
+    // Player (cube)
+    const playerGeo = new THREE.BoxGeometry(1, 1, 1);
+    const playerMat = new THREE.MeshStandardMaterial({
+      color: 0x111111,
+      metalness: 0.4,
+      roughness: 0.2,
+      emissive: 0x00ffe0,
+      emissiveIntensity: 0.4
+    });
+    const player = new THREE.Mesh(playerGeo, playerMat);
+    player.position.set(0, 1, 0);
+    player.castShadow = true;
+    gameScene.add(player);
+
+    // Camera follow offset
+    const camOffset = new THREE.Vector3(0, 6, 12);
+
+    // Orbs (bouncy spheres)
+    const orbs = [];
+    const ORB_COUNT = 14;
+    for (let i=0; i<ORB_COUNT; i++){
+      const r = 0.5 + Math.random()*0.8;
+      const g = new THREE.SphereGeometry(r, 24, 24);
+      const color = (i % 2 === 0) ? 0x00ffe0 : 0xff4dff;
+      const m = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.2,
+        roughness: 0.3,
+        emissive: color,
+        emissiveIntensity: 0.7
+      });
+      const s = new THREE.Mesh(g, m);
+      s.position.set((Math.random()-0.5)*BOUNDS.x*1.5, 3+Math.random()*6, (Math.random()-0.5)*BOUNDS.z*1.5);
+      s.userData = { v: new THREE.Vector3((Math.random()-0.5)*4, Math.random()*2, (Math.random()-0.5)*4), r };
+      orbs.push(s);
+      gameScene.add(s);
+    }
+
+    /* ====== INPUT ====== */
+    const keys = { w:false, a:false, s:false, d:false, space:false, shift:false };
+    window.addEventListener('keydown', (e)=>{ if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; if(e.code==='Space') keys.space=true; if(e.key==='Shift') keys.shift=true; });
+    window.addEventListener('keyup',   (e)=>{ if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; if(e.code==='Space') keys.space=false; if(e.key==='Shift') keys.shift=false; });
+
+    /* ====== PHYSICS ====== */
+    const GRAVITY = -20;       // m/s^2
+    const FRICTION = 8.0;      // linear damping on ground
+    const AIR_DRAG = 1.0;      // damping in air
+    const JUMP_SPEED = 8.5;
+    const MOVE_ACCEL = 24;     // acceleration when pressing keys
+    const BOOST_MULT = 1.6;    // Shift boost
+    const RESTITUTION = 0.65;  // bounciness for orbs
+
+    const playerV = new THREE.Vector3();
+    let onGround = false;
+
+    function stepPhysics(dt){
+      // --- Player controls ---
+      const accel = new THREE.Vector3();
+      const speedMul = keys.shift ? BOOST_MULT : 1.0;
+      if(keys.w) accel.z -= MOVE_ACCEL * speedMul;
+      if(keys.s) accel.z += MOVE_ACCEL * speedMul;
+      if(keys.a) accel.x -= MOVE_ACCEL * speedMul;
+      if(keys.d) accel.x += MOVE_ACCEL * speedMul;
+
+      // apply acceleration (x,z) — simple arcade feel
+      playerV.x += accel.x * dt;
+      playerV.z += accel.z * dt;
+
+      // gravity
+      playerV.y += GRAVITY * dt;
+
+      // integrate
+      player.position.addScaledVector(playerV, dt);
+
+      // floor collision
+      if(player.position.y < 0.5){
+        player.position.y = 0.5;
+        playerV.y = 0;
+        onGround = true;
+      } else {
+        onGround = false;
+      }
+
+      // jump
+      if(onGround && keys.space){
+        playerV.y = JUMP_SPEED;
+      }
+
+      // friction / drag
+      const horiz = new THREE.Vector2(playerV.x, playerV.z);
+      const damping = onGround ? FRICTION : AIR_DRAG;
+      const dampFactor = Math.max(0, 1 - damping * dt);
+      horiz.multiplyScalar(dampFactor);
+      playerV.x = horiz.x;
+      playerV.z = horiz.y;
+
+      // bounds for player
+      player.position.x = Math.max(-BOUNDS.x+0.5, Math.min(BOUNDS.x-0.5, player.position.x));
+      player.position.z = Math.max(-BOUNDS.z+0.5, Math.min(BOUNDS.z-0.5, player.position.z));
+
+      // --- Orbs physics ---
+      for(const s of orbs){
+        const v = s.userData.v;
+        v.y += GRAVITY * dt;
+        s.position.addScaledVector(v, dt);
+
+        // collisions with floor/ceiling
+        if(s.position.y - s.userData.r < 0){
+          s.position.y = s.userData.r;
+          v.y = -v.y * RESTITUTION;
+          v.x *= 0.98; v.z *= 0.98;
+        } else if(s.position.y + s.userData.r > BOUNDS.yCeil){
+          s.position.y = BOUNDS.yCeil - s.userData.r;
+          v.y = -v.y * RESTITUTION;
+        }
+
+        // walls (x,z)
+        if(Math.abs(s.position.x) + s.userData.r > BOUNDS.x){
+          s.position.x = Math.sign(s.position.x) * (BOUNDS.x - s.userData.r);
+          v.x = -v.x * RESTITUTION;
+        }
+        if(Math.abs(s.position.z) + s.userData.r > BOUNDS.z){
+          s.position.z = Math.sign(s.position.z) * (BOUNDS.z - s.userData.r);
+          v.z = -v.z * RESTITUTION;
+        }
+
+        // simple player bounce if overlapping
+        const dx = s.position.x - player.position.x;
+        const dy = s.position.y - player.position.y;
+        const dz = s.position.z - player.position.z;
+        const dist2 = dx*dx + dy*dy + dz*dz;
+        const minDist = s.userData.r + 0.8;
+        if(dist2 < minDist*minDist){
+          const d = Math.sqrt(dist2) || 0.0001;
+          const nx = dx/d, ny = dy/d, nz = dz/d;
+          const push = (minDist - d) * 0.6;
+          s.position.x += nx * push; s.position.y += ny * push; s.position.z += nz * push;
+          v.x += nx * 2; v.y += ny * 2; v.z += nz * 2;
+          playerV.x -= nx * 1.2; playerV.y -= ny * 1.2; playerV.z -= nz * 1.2;
+        }
+      }
+    }
+
+    // Simple camera follow
+    function updateCamera(){
+      const target = player.position.clone().add(new THREE.Vector3(0, 2.5, 0));
+      const desired = player.position.clone().add(camOffset);
+      camera.position.lerp(desired, 0.08);
+      camera.lookAt(target);
+    }
+
+    // Neon grid helpers
+    const gridHelper = new THREE.GridHelper(40, 40, 0x00ffe0, 0x003a32);
+    gridHelper.position.y = 0.001;
+    gameScene.add(gridHelper);
+
+    // FPS counter
+    let last = performance.now();
+    let acc = 0, frames = 0;
+    const fpsEl = document.getElementById('fps');
+
+    (function loop(now){
+      requestAnimationFrame(loop);
+      const dt = Math.min(0.033, (now - last) / 1000); // clamp dt
+      last = now;
+
+      stepPhysics(dt);
+      updateCamera();
+
+      renderer.setClearColor(0x0f0f1c, 1);
+      renderer.render(gameScene, camera);
+
+      // FPS
+      acc += dt; frames++;
+      if(acc >= 0.5){ fpsEl.textContent = 'FPS: ' + Math.round(frames/acc); acc = 0; frames=0; }
+    })(performance.now());
+  </script>
+</body>
+<div class="buttons">
+        <a href="projects.html" class="cta secondary">← Back to Projects</a>
+      </div>
+    </div>
+</html>

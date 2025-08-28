@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Alternate Portfolio | Vivek Yadav</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+    header {
+      text-align: center;
+      padding: 50px 20px 20px;
+    }
+    header h1 {
+      font-size: 3em;
+      color: #00ffe0;
+      text-shadow: 0 0 10px #00ffe0, 0 0 20px #00ffe0;
+    }
+    header p {
+      color: #ccc;
+      font-size: 1.2em;
+    }
+    header a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #00ffe0;
+      color: #000;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    header a:hover {
+      background: #0ff;
+      box-shadow: 0 0 15px #0ff;
+    }
+    section.projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 50px;
+    }
+    .project {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid #00ffe0;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      transition: 0.3s;
+    }
+    .project:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 15px #00ffe0;
+    }
+    .project img {
+      width: 100%;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <header>
+    <h1>Vivek Yadav</h1>
+    <p>Futuristic Portfolio with Neon Glow & 3D Starfield</p>
+    <a href="index.html">⬅ Back to Home</a>
+  </header>
+
+  <section class="projects">
+    <div class="project">
+      <img src="https://via.placeholder.com/300x200/00ffe0/000000?text=Project+1" alt="Project 1">
+      <h3>Project One</h3>
+      <p>Futuristic Dashboard UI</p>
+      <a href="project-one.html" style="color:#0ff;">View Project</a>
+    </div>
+    <div class="project">
+      <img src="https://via.placeholder.com/300x200/00ffe0/000000?text=Project+2" alt="Project 2">
+      <h3>3D Game Prototype</h3>
+      <p>Three.js based game with custom physics</p>
+      <a href="game.html" style="color:#0ff;">View Project</a>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2025 Vivek Yadav. All Rights Reserved.
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const canvas = document.getElementById('bgCanvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    function createStar() {
+      const geometry = new THREE.SphereGeometry(0.15, 12, 12);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ffe0 });
+      const star = new THREE.Mesh(geometry, material);
+      star.position.x = (Math.random() - 0.5) * 100;
+      star.position.y = (Math.random() - 0.5) * 100;
+      star.position.z = -Math.random() * 200;
+      scene.add(star);
+    }
+    Array(300).fill().forEach(createStar);
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      scene.rotation.x += 0.0005;
+      scene.rotation.y += 0.001;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

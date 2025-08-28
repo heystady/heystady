@@ -1,0 +1,95 @@
+<!-- projects.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Projects | Your Name</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <section class="hero">
+    <div class="overlay"></div>
+    <div class="content">
+      <h1 class="neon">🚀 My Projects</h1>
+      <p class="subtitle">Here are some of the things I've built:</p>
+      
+      <div class="projects">
+  <a href="project one.html" class="project tilt" style="text-decoration:none; color:inherit;">
+    <h3>🔧 Project One</h3>
+    <p>A futuristic dashboard UI with real-time data and neon design.</p>
+  </a>
+
+  <a href="project game.html" class="project tilt" style="text-decoration:none; color:inherit;">
+  <h3>🎮 3D Game Prototype</h3>
+  <p>Built using Three.js with custom physics and effects.</p>
+</a>
+
+
+  <a href="second portfolio.html" class="project tilt" style="text-decoration:none; color:inherit;">
+    <h3>🌐 Portfolio Site</h3>
+    <p>This very site, with glowing animations and 3D starfields!</p>
+</a>
+</div>
+
+
+      <div class="buttons">
+        <a href="index.html" class="cta secondary tilt">← Back to Home</a>
+      </div>
+    </div>
+    
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
+
+
+  <script>
+    // Tilt
+    VanillaTilt.init(document.querySelectorAll(".tilt"), {
+      max: 25,
+      speed: 400,
+      glare: true,
+      "max-glare": 0.3
+    });
+
+    // Background stars
+    const canvas = document.getElementById('bgCanvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    function createStar() {
+      const geometry = new THREE.SphereGeometry(0.1, 24, 24);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ffe0 });
+      const star = new THREE.Mesh(geometry, material);
+      star.position.x = (Math.random() - 0.5) * 100;
+      star.position.y = (Math.random() - 0.5) * 100;
+      star.position.z = -Math.random() * 200;
+      scene.add(star);
+    }
+
+    Array(300).fill().forEach(createStar);
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      scene.rotation.x += 0.0005;
+      scene.rotation.y += 0.001;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

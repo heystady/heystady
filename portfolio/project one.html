@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Project One | Neon Realtime Dashboard</title>
+
+  <!-- Fonts & Styles -->
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Page-local tweaks (kept small; main styles live in style.css) */
+    .dash-wrap { max-width: 1200px; margin: 0 auto; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 2rem; }
+    .kpi-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,224,0.15);
+      border-radius: 18px; padding: 1rem 1.25rem; box-shadow: 0 0 20px rgba(0,255,224,0.08); }
+    .kpi-label { color:#9ad; font-size:.8rem; letter-spacing:.08em; text-transform:uppercase }
+    .kpi-value { font-size:1.8rem; margin-top:.25rem; color:#00ffe0; text-shadow:0 0 10px #00ffe0; }
+    .grid-panels { display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-top:1rem; }
+    .panel { background: rgba(255,255,255,0.03); border:1px solid rgba(0,255,224,0.15);
+      border-radius:18px; padding:1rem; box-shadow: 0 0 20px rgba(0,255,224,0.08); }
+    .panel h3 { margin:0 0 .75rem; color:#00ffe0 }
+    .legend-dot { display:inline-block; width:.75rem; height:.75rem; border-radius:50%; margin-right:.4rem; }
+    .panel .mini { display:grid; grid-template-columns: 1fr; gap:1rem; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem; }
+    @media (max-width: 1024px) {
+      .kpis { grid-template-columns: 1fr 1fr; }
+      .grid-panels { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+    }
+    .badge-live { display:inline-flex; align-items:center; gap:.5rem; font-size:.85rem; color:#9ad }
+    .pulse { width:.6rem; height:.6rem; background:#00ffe0; border-radius:999px; box-shadow:0 0 10px #00ffe0; animation:pulse 1.2s infinite }
+    @keyframes pulse { 0%{transform:scale(.9);opacity:.8} 70%{transform:scale(1.25);opacity:.3} 100%{transform:scale(.9);opacity:.8} }
+    .divider { height:1px; background:linear-gradient(90deg, transparent, rgba(0,255,224,.3), transparent); margin:.5rem 0 1rem }
+  </style>
+</head>
+<body>
+  <!-- Shared neon starfield -->
+  <canvas id="bgCanvas"></canvas>
+
+  <section class="hero" style="min-height: auto; padding-top: 5rem; padding-bottom: 4rem;">
+    <div class="overlay"></div>
+    <div class="content dash-wrap">
+      <h1 class="neon">🔧 Project One — Realtime Neon Dashboard</h1>
+      <p class="subtitle">
+        A futuristic dashboard UI with glowing charts and live metrics.
+        <span class="badge-live"><span class="pulse"></span> live feed</span>
+      </p>
+
+      <!-- KPIs -->
+      <div class="kpis">
+        <div class="kpi-card">
+          <div class="kpi-label">Active Users</div>
+          <div class="kpi-value" id="kpiUsers">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">TPS</div>
+          <div class="kpi-value" id="kpiTps">0.00</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Latency (ms)</div>
+          <div class="kpi-value" id="kpiLatency">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Uptime</div>
+          <div class="kpi-value" id="kpiUptime">00:00:00</div>
+        </div>
+      </div>
+
+      <!-- Panels -->
+      <div class="grid-panels">
+        <div class="panel">
+          <h3>Traffic (last 60s)</h3>
+          <div class="divider"></div>
+          <canvas id="lineChart" height="120"></canvas>
+        </div>
+        <div class="panel">
+          <h3>System Load</h3>
+          <div class="divider"></div>
+          <canvas id="doughnutChart" height="120"></canvas>
+          <p style="margin-top:.75rem;">
+            <span class="legend-dot" style="background:#00ffe0"></span>CPU&nbsp;&nbsp;
+            <span class="legend-dot" style="background:#ff4dff"></span>Memory&nbsp;&nbsp;
+            <span class="legend-dot" style="background:#8a9cff"></span>Disk
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="panel">
+          <h3>Events/min</h3>
+          <div class="divider"></div>
+          <canvas id="barChart" height="120"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Notes</h3>
+          <div class="divider"></div>
+          <p class="bio">This page is wired with a simple fake feed. Swap it with your API/WebSocket in one place (see <code>updateLiveData()</code>).</p>
+          <ul style="line-height:1.7; color:#ccc">
+            <li>Neon theme matches your site</li>
+            <li>Charts auto-trim to last 60 points</li>
+            <li>Responsive layout for mobile</li>
+          </ul>
+          <div class="buttons">
+            <a href="projects.html" class="cta secondary">← Back to Projects</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script>
+    /* ==== STARFIELD (shared pattern with your other pages) ==== */
+    (function initStars(){
+      const canvas = document.getElementById('bgCanvas');
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      function createStar() {
+        const geometry = new THREE.SphereGeometry(0.07, 16, 16);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffe0 });
+        const star = new THREE.Mesh(geometry, material);
+        star.position.x = (Math.random() - 0.5) * 120;
+        star.position.y = (Math.random() - 0.5) * 120;
+        star.position.z = -Math.random() * 220;
+        scene.add(star);
+      }
+      Array(450).fill().forEach(createStar);
+      camera.position.z = 5;
+
+      function animate() {
+        requestAnimationFrame(animate);
+        scene.rotation.x += 0.0005;
+        scene.rotation.y += 0.001;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    })();
+
+    /* ==== CHARTS ==== */
+    const neonBorder = '#00ffe0';
+    const neonFill = 'rgba(0,255,224,0.18)';
+    const neonPink = '#ff4dff';
+    const neonBlue = '#8a9cff';
+
+    // Base chart options for dark theme
+    const baseOptions = {
+      responsive: true,
+      animation: false,
+      plugins: {
+        legend: { labels: { color: '#cfe' } },
+        tooltip: { intersect:false, mode:'index' }
+      },
+      scales: {
+        x: { ticks: { color: '#9ad' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#9ad' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    };
+
+    const lineCtx = document.getElementById('lineChart');
+    const barCtx = document.getElementById('barChart');
+    const doughnutCtx = document.getElementById('doughnutChart');
+
+    const lineChart = new Chart(lineCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{
+        label: 'Requests/sec',
+        data: [],
+        borderColor: neonBorder,
+        backgroundColor: neonFill,
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 0
+      }]},
+      options: { ...baseOptions, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, beginAtZero:true } } }
+    });
+
+    const barChart = new Chart(barCtx, {
+      type: 'bar',
+      data: { labels: [], datasets: [{
+        label: 'Events/min',
+        data: [],
+        borderColor: neonPink,
+        backgroundColor: 'rgba(255,77,255,0.18)'
+      }]},
+      options: { ...baseOptions, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, beginAtZero:true } } }
+    });
+
+    const doughnutChart = new Chart(doughnutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['CPU','Memory','Disk'],
+        datasets: [{
+          data: [30, 50, 20],
+          backgroundColor: [neonBorder, neonPink, neonBlue],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: '65%',
+        plugins: {
+          legend: { position:'bottom', labels:{ color:'#cfe' } }
+        }
+      }
+    });
+
+    /* ==== LIVE DATA LOOP ==== */
+    const kpiUsers = document.getElementById('kpiUsers');
+    const kpiTps = document.getElementById('kpiTps');
+    const kpiLatency = document.getElementById('kpiLatency');
+    const kpiUptime = document.getElementById('kpiUptime');
+    const startTs = Date.now();
+
+    function hhmmss(ms){
+      const s = Math.floor(ms/1000);
+      const h = String(Math.floor(s/3600)).padStart(2,'0');
+      const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+      const ss = String(s%60).padStart(2,'0');
+      return `${h}:${m}:${ss}`;
+    }
+
+    // Replace this with your API/WebSocket:
+    // Example WebSocket:
+    // const ws = new WebSocket('wss://your-feed');
+    // ws.onmessage = (e) => updateLiveData(JSON.parse(e.data));
+    function getFakePayload(){
+      return {
+        ts: Date.now(),
+        rps: Math.max(0, (Math.sin(Date.now()/1500)*20 + 30) + (Math.random()*5)),
+        eventsPerMin: Math.floor(Math.random()*120),
+        cpu: Math.floor(Math.random()*40)+20,
+        mem: Math.floor(Math.random()*40)+30,
+        disk: Math.floor(Math.random()*30)+10,
+        users: Math.floor(Math.random()*900)+100,
+        latency: Math.floor(Math.random()*120)+30,
+        tps: (Math.random()*2 + 0.5)
+      };
+    }
+
+    function updateLiveData(payload){
+      // KPIs
+      kpiUsers.textContent = payload.users.toLocaleString();
+      kpiTps.textContent = payload.tps.toFixed(2);
+      kpiLatency.textContent = payload.latency.toString();
+      kpiUptime.textContent = hhmmss(Date.now() - startTs);
+
+      // Line (Requests/sec)
+      const timeLabel = new Date(payload.ts).toLocaleTimeString();
+      lineChart.data.labels.push(timeLabel);
+      lineChart.data.datasets[0].data.push(payload.rps);
+      if(lineChart.data.labels.length > 60){
+        lineChart.data.labels.shift();
+        lineChart.data.datasets[0].data.shift();
+      }
+      lineChart.update();
+
+      // Bar (events/min) — show last 10 minutes rolling
+      const minuteLabel = new Date(payload.ts).toLocaleTimeString().slice(0,5);
+      barChart.data.labels.push(minuteLabel);
+      barChart.data.datasets[0].data.push(payload.eventsPerMin);
+      if(barChart.data.labels.length > 10){
+        barChart.data.labels.shift();
+        barChart.data.datasets[0].data.shift();
+      }
+      barChart.update();
+
+      // Doughnut (system load)
+      doughnutChart.data.datasets[0].data = [payload.cpu, payload.mem, payload.disk];
+      doughnutChart.update();
+    }
+
+    setInterval(() => updateLiveData(getFakePayload()), 1000);
+  </script>
+</body>
+</html>

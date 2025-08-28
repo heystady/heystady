@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>stady | Futuristic Portfolio</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <section class="hero">
+    <div class="overlay"></div>
+    <div class="content">
+      <h1>Hello, I'm <span class="neon">Vivek</span></h1>
+      <p class="subtitle"><span id="typing"></span></p>
+      <p class="bio">I build immersive digital experiences with glowing effects, animations, and 3D designs. Passionate about futuristic UI and modern code.</p>
+      <div class="buttons">
+        <a href="projects.html" class="cta tilt">View My Work</a>
+        <a href="#contact" class="cta secondary tilt">Contact Me</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <h2>📬 Get In Touch</h2>
+    <p>Email me at <a href="https://mail.google.com/mail/?view=cm&fs=1&to=vivekyadav04072005@gmail.com&su=Hiring Inquiry&body=Hello Vivek, I am interested in working with you!"" class="tilt">Gmail</a></p>
+    <p>Or connect on <a href="error.html" class="tilt">LinkedIn</a> | 
+      <a href="error.html" class="tilt">GitHub</a></p>
+  </section>
+  <footer class="footer">
+  <div class="footer-buttons">
+    <a href="error.html" class="cta secondary tilt">📄 Download Resume</a>
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=vivekyadav04072005@gmail.com&su=Hiring Inquiry&body=Hello Vivek, I am interested in working with you!" 
+   target="_blank" 
+   class="cta secondary tilt">💼 Hire Me</a>
+  </div>
+  <p class="footer-text">© 2025 Vivek — Built with ❤️, neon, and stars.</p>
+</footer>
+
+  <script>
+    // Typing Animation
+    const typed = new Typed('#typing', {
+      strings: ['Web Developer', '3D Designer', 'UI Explorer', 'Futuristic Coder'],
+      typeSpeed: 60,
+      backSpeed: 30,
+      backDelay: 1500,
+      loop: true
+    });
+
+    // Tilt Effect
+    VanillaTilt.init(document.querySelectorAll(".tilt"), {
+      max: 25,
+      speed: 400,
+      glare: true,
+      "max-glare": 0.3
+    });
+
+    // 3D Star Background
+    const canvas = document.getElementById('bgCanvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    function createStar() {
+      const geometry = new THREE.SphereGeometry(0.1, 24, 24);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ffe0 });
+      const star = new THREE.Mesh(geometry, material);
+      star.position.x = (Math.random() - 0.5) * 100;
+      star.position.y = (Math.random() - 0.5) * 100;
+      star.position.z = -Math.random() * 200;
+      scene.add(star);
+    }
+
+    Array(500).fill().forEach(createStar);
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      scene.rotation.x += 0.0005;
+      scene.rotation.y += 0.001;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Ripple Click Effect
+    document.body.addEventListener('click', function(e) {
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple';
+      ripple.style.left = `${e.clientX}px`;
+      ripple.style.top = `${e.clientY}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 1000);
+    });
+    
+  </script>
+</body>
+
+</html>
+
